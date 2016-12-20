@@ -68,7 +68,7 @@ tags: #study #study/big-data
 	* 데이터가 정규화된 형태(serving-layer)와 비정규화된 형태(batch layer) 모두로 존재하여 양쪽의 장점을 취사 선택 가능
 
 #### 람다 아키텍처에서의 정규화 & 비정규화 
-![](2_Data model for big data/../images/pic_2_15.png)
+![](../images/pic_2_15.png)
 - 	마스터 데이터 집합
 	- 완전히 정규화되어 구성: 어떤 데이터도 중복되지 않음 
 	* 데이터 갱신: 새 팩트를 타임스탬프를 붙여 저장하면 관련된 과거 팩트를 무효화
@@ -97,7 +97,7 @@ tags: #study #study/big-data
 
 
 ## 2.4 `SuperWebAnalytics.com`에 대한 최종 데이터 모델
-![](2_Data model for big data/../images/pic_2_17.png)
+![](../images/pic_2_17.png)
 
 #### 노드
 - 사람: ID로 식별, 쿠키로 식별 두 가지 부류 존재
