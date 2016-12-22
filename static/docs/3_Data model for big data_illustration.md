@@ -36,7 +36,7 @@ Node: 공용체, Edge: 구조체, Property: 이들의 조합
   - 데이터 발전에 따른 스키마의 발전이 허용
 
 ##### 스리프트 공용체를 사용하여 `SuperWebAnalytics.com`중 일부 노드 정의  
-```
+```thrift
 union PersonID {
   1: string cookie;
   2: i64 user_id;
@@ -57,7 +57,7 @@ union PageID {
   - `required`: 해당 필드에 값이 반드시 제공되어야 함(값이 없으면 스리프트단에서 직렬화, 역직렬화 시 에러 발생)
   - `optional`: `required`의 반대
 
-```
+```thrift
 struct EquivEdge {
   1: required PersonID id1;
   2: required PersonID id2
@@ -75,7 +75,7 @@ struct PageViewEdge {
 - 속성값은 여러 타입이 될 수 있으므로 공용체가 유리
 
 ##### 페이지 속성에 사용할 스키마 정의
-```
+```thrift
 union PagePropertyValue {
   1: i32 page_views;
 }
@@ -87,7 +87,7 @@ struct PageProperty {
 ```
 
 ##### 유저 속성 정의(주거지 속성이 복잡하여 구조체가 하나 추가)
-```
+```thrift
 struct Location {
   1: optional string city;
   2: optional string state;
@@ -120,7 +120,7 @@ struct PersonProperty {
 - 데이터 관리도 용이
 
 ##### `SuperWebAnalytics.com` 스키마 완성
-```
+```thrift
 union DataUnit {
   1: PersonProperty person_property;
   2: PageProperty page_property;
