@@ -39,6 +39,16 @@ Node: 공용체, Edge: 구조체, Attribute: 이들의 조합
 [schema.thrift](../../models/schema.thrift)
 
 ### 3.2.2 Edge
+- **Struct** 에 적합
+  - 간선은 두 개의 노드를 포함하는 구조체로 표현
+  - 이름: 그것이 표현하는 관계
+  - 필드: 그 관계로 엮인 개체
+
+- `required` vs `optional`
+  - `required`: 해당 필드에 값이 반드시 제공되어야 함(값이 없으면 스리프트단에서 직렬화, 역직렬화 시 에러 발생)
+  - `optional`: `required`의 반대
+
+[schema.thrift](../../models/schema.thrift)
 
 ### 3.2.3 Attribute
 
