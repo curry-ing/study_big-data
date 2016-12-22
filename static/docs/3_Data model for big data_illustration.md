@@ -36,7 +36,16 @@ Node: 공용체, Edge: 구조체, Attribute: 이들의 조합
   - 데이터 발전에 따른 스키마의 발전이 허용
 
 ##### 스리프트 공용체를 사용하여 `SuperWebAnalytics.com`중 일부 노드 정의  
-[schema.thrift](../../models/schema.thrift)
+```
+union PersonID {
+  1: string cookie;
+  2: i64 user_id;
+}
+
+union PageID {
+  1: string url;
+}
+```
 
 ### 3.2.2 Edge
 - **Struct** 에 적합
@@ -48,11 +57,91 @@ Node: 공용체, Edge: 구조체, Attribute: 이들의 조합
   - `required`: 해당 필드에 값이 반드시 제공되어야 함(값이 없으면 스리프트단에서 직렬화, 역직렬화 시 에러 발생)
   - `optional`: `required`의 반대
 
-[schema.thrift](../../models/schema.thrift)
+```
+struct EquivEdge {
+  1: required PersonID id1;
+  2: required PersonID id2
+}
+
+struct PageViewEdge {
+  1: required PersonID person;
+  2: required PageID page;
+  3: required i64 nonce;
+}
+```
 
 ### 3.2.3 Attribute
+- Attribute는 노드와 각 노드에 대한 속성값을 가진다
+- 속성값은 여러 타입이 될 수 있으므로 공용체가 유리
+
+##### 페이지 속성에 사용할 스키마 정의
+```
+union PagePropertyValue {
+  1: i32 page_views;
+}
+
+struct PageProperty {
+  1: required PageID id;
+  2: required PagePropertyValue property;
+}
+```
+
+##### 유저 속성 정의(주거지 속성이 복잡하여 구조체가 하나 추가)
+```
+struct Location {
+  1: optional string city;
+  2: optional string state;
+  3: optional string country;
+}
+
+enum GenderType {
+  MALE = 1,
+  FEMALE = 2
+}
+
+union PersonPropertyValue {
+  1: string full_name;
+  2: GenderType gender;
+  3: Location location;
+}
+
+struct PersonProperty {
+  1: required PersonID id;
+  2: required PersonPropertyValue property;
+}
+```
+- 주거지 구조체  
+  - 시, 주, 국가는 따로 존재해도 무방
+  - 각 필드가 긴밀하기 때문에 이들을 모두 하나의 구조체 내에 `optional`로 선언
 
 ### 3.2.4 노드, 간선, 속성을 모두 엮어 데이터 객체로 만들기
+#### `DataUnit` 공용체
+- 별도로 정의된 데이터를 엮어 단일한 인터페이스 제공
+- 데이터 관리도 용이
+
+##### `SuperWebAnalytics.com` 스키마 완성
+```
+union DataUnit {
+  1: PersonProperty person_property;
+  2: PageProperty page_property;
+  3: EquivEdge equiv;
+  4: PageViewEdge page_view;
+}
+
+struct Pedigree {
+  1: required i32 ture_as_of_secs;
+}
+
+struct Data {
+  1: required Pedigree pedigree;
+  2: required DataUnit dataunit;
+}
+```
+- 각 `DataUnit`은 `Pedigree` 구조체에 저장된 메타 데이터와 매치
+- 현재는 타임스탬프만을 가지고 있으나, 필요시 디버깅 정보나 데이터의 출처를 포함 가능
+- `Data`구조체는 팩트 기반 모델에서의 **팩트** 에 해당
+
+[`SuperWebAnalytics.com` 스키마](../../models/schema.thrift)
 
 ### 3.2.5 스키마 발전시키기
 
