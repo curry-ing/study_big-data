@@ -159,7 +159,7 @@ struct Data {
   - 공용체에는 `required`나 `optional`이 없기 때문에 해당사항 없음
 
 ##### `SuperWebAnalytics.com`스키마 발전
-[`SuperWebAnalytics.com` update](../../models/schema.thrift)
+[`SuperWebAnalytics.com` update](https://github.com/masunghoon/study_big-data/commit/ef6df74127591be18c3c561809c06b08b1eadcec#diff-4114df5a2e8be2296509e296a2570a0f)
 - 사람의 나이와 웹페이지 사이의 링크를 저장
   - `PersonPropertyValue`에 나이 필드 추가
   - `LinkedEdge`라는 엣지를 생성하고 `DataUnit`에 해당 간선 추가
