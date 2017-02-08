@@ -12,74 +12,6 @@
 
 ![](../images/pic_15_1.png)
 
-```java
-public static void main(String[] args) throws Exception {
-  TopologyBuilder builder = new TopologyBuilder();  //토폴로지 어플리케이션 정의
-                                                    //TopologyBuilder객체는 스톰 토폴로지를 규정하는 API포함
-
-  // 문장을 내보내는 스파우트 이 스파우트를 실행하기 위한 스레드가 클러스터 8개에 생성
-  builder.setSpout("sentence-spout", new RandomSentenceSpout(), 8);
-
-  // 문장 스트림을 받아 단어 스트림으로 바꾸는 볼트를 12개 생성하여 분산
-  builder.setBolt("splitter", new SplitSentence(), 12)  
-    .shuffleGrouping("sentence-spout");                 // 딱히 문장을 어떻게 소비할지에 대한 명시적인 요구가 없기에 셔플 그룹화를 사용
-
-  // 단어 스트림을 소비하여 단어 개수를 카운트하는 볼트를 12개 생성
-  builder.setBolt("count", new WordCount(), 12)       
-    .fieldsGrouping("splitter", new Fields("word"));  // 필드 그룹화 사용: 같은 단어 처리시 하나의 태스크 할당
-
-  Config conf = new Config();
-  conf.setNumWorkers(4);
-  StormSubmitter.submitTopoloty("word-count-topology", conf, builder.createTopology());
-  conf.setMaxSpoutPending(1000);
-}
-```
-
-#### 단어 분리자 볼트
-- 들어오는 투플에서 첫 필드로부터 문장을 꺼내고
-- 문장에 포함된 단어 전부에 대한 투플을 새로 만들어 방출
-
-```java
-public static class SplitSentence extends BaseBasicBolt {
-  public void execute(Tuple tuple, BasicOutputCollector collector) {
-    String sentence = tuple.getString(0); // 들어오는 투플은 문장 한 개를 포함
-    for(String word: sentence.split(" ")) {
-      collector.emit(new Values(word));   // 문장을 단어로 분리하여 출력 투플 스트림으로 방출
-    }
-  }
-
-  public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    // 외부로 나가는 투플은 `word`로 이름붙인 한 개의 값으로 구성토록 정의
-    declarer.declare(new Fields("word"));
-  }
-}
-```
-
-#### 카운터 볼트
-- 인-메모리 해시맵에 단어 개수를 저장하는 방식으로 구현
-- 데이터베이스와 통신하는 방식으로 구현하더라도 무방
-
-```java
-public static class WordCount extends BaseBasicBolt {
-  // 인 메모리 해시맵은 볼트에 의해 수신된 모든 단어에 대한 개수 저장
-  Map<String, Integer> counts = new HashMap<String, Integer>();
-
-  public void execute(Tuple tuple, BasicOutputCollector collector) {
-    String word = tuple.getString(0);         // 입력되는 투플로부터 단어 추출
-    Integer count = counts.get(word);         // 현재 단어의 카운트를 가져옴
-    if (count == null) count = 0;             // 해당 단어가 이전에 들어온 적이 없다면 단어수 초기화
-    count++;                                  // 갱신
-    counts.put(word, count);                  // 갱신된 단어 수를 저장
-    collector.emit(new Values(word, count));  // 갱신된 단어 수를 방출
-  }
-
-  public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    // 단어와 해당 단어의 현재 개수로 구성된 출력 투플 선언
-    declarer.declare(new Fields("word", "count"));  
-  }
-}
-```
-
 #### 스파우트
 - 100ms마다 임의로 한 개를 선택하여 방출하면서 문장 스트림을 끝없이 생산
 - 직접 스파우트를 만드는 방식으로 구현했지만...
@@ -112,6 +44,76 @@ public static class RandomSentenceSpout extends BaseRichSpout {
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     declarer.declare(new Fields("sentence")); // 출력 투플이 문장 하나로 구성되도록 선언
   }
+}
+```
+
+
+#### 단어 분리자 볼트
+- 들어오는 투플에서 첫 필드로부터 문장을 꺼내고
+- 문장에 포함된 단어 전부에 대한 투플을 새로 만들어 방출
+
+```java
+public static class SplitSentence extends BaseBasicBolt {
+  public void execute(Tuple tuple, BasicOutputCollector collector) {
+    String sentence = tuple.getString(0); // 들어오는 투플은 문장 한 개를 포함
+    for(String word: sentence.split(" ")) {
+      collector.emit(new Values(word));   // 문장을 단어로 분리하여 출력 투플 스트림으로 방출
+    }
+  }
+  public void declareOutputFields(OutputFieldsDeclarer declarer) {
+    // 외부로 나가는 투플은 `word`로 이름붙인 한 개의 값으로 구성토록 정의
+    declarer.declare(new Fields("word"));
+  }
+}
+```
+
+#### 카운터 볼트
+- 인-메모리 해시맵에 단어 개수를 저장하는 방식으로 구현
+- 데이터베이스와 통신하는 방식으로 구현하더라도 무방
+
+```java
+public static class WordCount extends BaseBasicBolt {
+  // 인 메모리 해시맵은 볼트에 의해 수신된 모든 단어에 대한 개수 저장
+  Map<String, Integer> counts = new HashMap<String, Integer>();
+
+  public void execute(Tuple tuple, BasicOutputCollector collector) {
+    String word = tuple.getString(0);         // 입력되는 투플로부터 단어 추출
+    Integer count = counts.get(word);         // 현재 단어의 카운트를 가져옴
+    if (count == null) count = 0;             // 해당 단어가 이전에 들어온 적이 없다면 단어수 초기화
+    count++;                                  // 갱신
+    counts.put(word, count);                  // 갱신된 단어 수를 저장
+    collector.emit(new Values(word, count));  // 갱신된 단어 수를 방출
+  }
+  public void declareOutputFields(OutputFieldsDeclarer declarer) {
+    // 단어와 해당 단어의 현재 개수로 구성된 출력 투플 선언
+    declarer.declare(new Fields("word", "count"));  
+  }
+}
+```
+
+#### 토폴로지
+로 완전히 엮어보겠습니다. 
+
+```java
+public static void main(String[] args) throws Exception {
+  TopologyBuilder builder = new TopologyBuilder();  //토폴로지 어플리케이션 정의
+                                                    //TopologyBuilder객체는 스톰 토폴로지를 규정하는 API포함
+
+  // 문장을 내보내는 스파우트 이 스파우트를 실행하기 위한 스레드가 클러스터 8개에 생성
+  builder.setSpout("sentence-spout", new RandomSentenceSpout(), 8);
+
+  // 문장 스트림을 받아 단어 스트림으로 바꾸는 볼트를 12개 생성하여 분산
+  builder.setBolt("splitter", new SplitSentence(), 12)  
+    .shuffleGrouping("sentence-spout");                 // 딱히 문장을 어떻게 소비할지에 대한 명시적인 요구가 없기에 셔플 그룹화를 사용
+
+  // 단어 스트림을 소비하여 단어 개수를 카운트하는 볼트를 12개 생성
+  builder.setBolt("count", new WordCount(), 12)       
+    .fieldsGrouping("splitter", new Fields("word"));  // 필드 그룹화 사용: 같은 단어 처리시 하나의 태스크 할당
+
+  Config conf = new Config();
+  conf.setNumWorkers(4);
+  StormSubmitter.submitTopoloty("word-count-topology", conf, builder.createTopology());
+  conf.setMaxSpoutPending(1000);
 }
 ```
 
@@ -170,7 +172,6 @@ public static class SplitSentenceExplicit extends BaseRichBolt {
     // 문장 투플이 성공적으로 처리되었다는 ack 전송
     _collector.ack(tuple);
   }
-
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     declarer.declare(new Fields("word"));
   }
@@ -255,7 +256,6 @@ public static class NormalizeURLBolt extends BaseBasicBolt {
       /* do nothing - 정규화가 실패하는 경우 해당 투플 Skip */
     }
   }
-  
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     declarer.declare(new Field("user", "url", "timestamp"));
   }
