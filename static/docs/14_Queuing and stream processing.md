@@ -114,7 +114,7 @@ interface Queue {
 - latency, throughput 모두 감소
   - 큐에 있는 이벤트는 디스크 IO 유발
   - 작업자간 이벤트 전달시 제 3자 개입 필요
-- boilerplates
+- too much boilerplates
 
 ## 14.3 '한 번에 하나' 방식의 상위 수준 스트림 처리
 - Queue-Consumer 모델을 일반화하면서 복잡성을 제거
@@ -146,11 +146,11 @@ interface Queue {
 
 #### 단어 수 세기 예제
 - 분리자 볼트: 문장 스트림 => 단어 스트림
-```scala
-class SplitterBolt {
-  def execute(sentence) {
-    for (word <- sentence.split(" ")) {
-      emit(word)
+```java
+class SplitterBolt {  // 볼트는 내부에 상태정보를 저장할 수 있기 떄문에 객체로 정의
+  function execute(sentence) { // 볼트는 투플을 넘겨받음, 이 경우 하나의 필드에 하나의 투플 전달
+    for (word in sentence.split(" ")) {
+      emit(word)  // 출력 스트림으로 단어를 방출
     }
   }
 }
@@ -159,8 +159,8 @@ class SplitterBolt {
 - 단어 수 세기 볼트: 단어의 개수를 계산
 ```java
 class WordCountBolt {
-  counts = Map(default = 0) {
-    function execute(word) {
+  counts = Map(default = 0) { // 단어 수는 메모리에 적재
+    function execute(word) {  
       counts[word]++;
       emit(word, counts[word]);
     }
@@ -200,7 +200,7 @@ class WordCountBolt {
 - **정확히 한 번** 보장을 위해서 **적어도 한 번** 은 필요조건
 
 > **작업에 대한 '적어도 한 번' 처리 보장**  
-- 토폴로지의 연산들이 모두 **멱등성**(idempotence)을 띄는 경우 **정확히 한 번** 처리를 의미
+- 토폴로지의 연산들이 모두 **[멱등성](https://ko.wikipedia.org/wiki/%EB%A9%B1%EB%93%B1%EB%B2%95%EC%B9%99)**(idempotence)을 띄는 경우 **정확히 한 번** 처리를 의미
 - 비멱등 연산이 포함된 경우에 생기는 약간의 부정확성은 무시
 - 서빙 계층이 속도계층을 갱신하므로 부정확성은 최종적으로 정정
 - 지연시간과 정확성 사이의 선택
@@ -208,9 +208,9 @@ class WordCountBolt {
 
 ## 14.4 `SWA`의 속도 계층
 #### 시간대별 순방문자의 속도계층 처리
-- **하이퍼로그로그** 를 사용하여 다른 집합과 병합 가능한 압축된 집합을 생성하여 조합 (약간의 정확도 희생)
 
-- **일괄처리 계층** 에서의 순방문자 계산 복기
+- **일괄처리 & 서빙 계층** 에서의 순방문자 계산 복기
+  - *하이퍼로그로그* 를 사용하여 다른 집합과 병합 가능한 압축된 집합을 생성하여 조합 (약간의 정확도 희생)
   - 동일관계 간선을 사용하여 개인별 식별자 정규화 선행
   - 정규화 작업 완료 후 순방문자 수 계산을 하기 때문에 복잡도 낮음
 

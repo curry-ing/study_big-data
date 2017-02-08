@@ -47,6 +47,7 @@ public static class SplitSentence extends BaseBasicBolt {
       collector.emit(new Values(word));   // 문장을 단어로 분리하여 출력 투플 스트림으로 방출
     }
   }
+
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     // 외부로 나가는 투플은 `word`로 이름붙인 한 개의 값으로 구성토록 정의
     declarer.declare(new Fields("word"));
@@ -71,6 +72,7 @@ public static class WordCount extends BaseBasicBolt {
     counts.put(word, count);                  // 갱신된 단어 수를 저장
     collector.emit(new Values(word, count));  // 갱신된 단어 수를 방출
   }
+
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     // 단어와 해당 단어의 현재 개수로 구성된 출력 투플 선언
     declarer.declare(new Fields("word", "count"));  
@@ -114,6 +116,24 @@ public static class RandomSentenceSpout extends BaseRichSpout {
 ```
 
 ## 15.2 아파치 스톰 클러스터와 배포
+#### 님버스
+- 마스터 노드, 토폴로지의 구동을 관리
+- 스톰에 토폴로지를 배포하는 요청을 받고, 토폴로지를 실행하기 위한 작업자를 클러스터에 할당
+- 죽은 작업자가 생겼을 때를 감지하고 필요시 다른 장비에 작업자를 재할당
+
+#### 주키퍼
+- 적은 양의 상태를 보관하는 용도로 탁월 & 클러스터 조정에 적합
+- 스톰 아키텍처 내에 작업자들이 할당된 위차와 다른 토폴로지 설정 정보를 추적
+- 주로 3개 or 5개 노드로 설정 (과반 투표)
+
+#### 작업자 노드
+##### 수퍼바이저
+- 주키퍼를 통해 님버스와 통신하면서 해당 장비에서 무엇을 실행할지를 결정하는 데몬
+- 님버스의 지시에 따라 필요한만큼 작업자 프로세스를 실행
+
+##### 작업자 프로세스 (Worker)
+- 주키퍼를 통해 다른 워커의 위치를 파악
+- 다른 작업자에게 직접 메시지 전달
 
 ![](../images/pic_15_2.png)
 
@@ -124,11 +144,14 @@ public static class RandomSentenceSpout extends BaseRichSpout {
 - 투플 DAG 전체가 소진되고, 노드 모두가 완료 표시가 되었을 때 스파우트 투플이 온전히 처리되었다고 판단
 - 타임아웃 발생시(기본 30초) DAG의 하향 스트림에서 작업자 프로세스 실패시 어떤 경우라도 실패로 간주
 
-### 스톰의 메시지 처리 보장을 위한 로직
+#### 스톰의 메시지 처리 보장을 위한 로직
 - **앵커링**(anchoring): 투플 DAG에 종속된 간선 생성시 스톰에게 알림
 - **액킹**(acking): 투플 처리 종료시 스톰에게 알림
 
 ##### 단어 수 세기 볼트 예제 소환
+- 위 예제는 `BaseBasicBolt`를 사용하는 기존 예제와 논리상 동일
+- `BaseBasicBolt`는 앵커링, 액킹을 모두 추상화하여 제공
+
 ```java
 // `BasicRichBolt`를 상속하는 경우 명시적으로 투플의 앵커링과 액킹을 직접 처리해야 함
 public static class SplitSentenceExplicit extends BaseRichBolt {
@@ -144,15 +167,50 @@ public static class SplitSentenceExplicit extends BaseRichBolt {
       // 내보내는 단어 투플을 들어오는 문장 투플에 앵커링
       _collector.emit(tuple, new Values(word));
     }
-    // 문장 투플이 성공적으로 처리되었다는 ack 전송 
+    // 문장 투플이 성공적으로 처리되었다는 ack 전송
     _collector.ack(tuple);
   }
+
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     declarer.declare(new Fields("word"));
   }
 }
 ```
 
+
+##### 스트림을 모으거나 합치는 경우...
+- 투플이 `execute`함수에서 처리된 직후 바로 `ack`를 보내지지 못하기 때문에 `BaseBasicBolt` 사용 불가
+  - 필요한 것을 버퍼에 넣어두었다가 계산을 마친 후 나중에 `ack`를 한꺼번에 방출
+
+```java
+// 투플이 100개가 들어오면 그 합계를 구해서 방출하는 볼트 구현
+public static class MultiAnchorer extends BaseRichBolt {
+  OutputCollector _collector;
+
+  public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
+    _collector = collector;
+  }
+
+  List<Tuple> _buffer = new ArrayList<Tuple>();
+  int _sum = 0;
+
+  public void execute(Tuple tuple) {
+    _sum += tuple.getInteger(0);  // 들어오는 값들의 합을 구해서 유지
+    if(_buffer.size() < 100) {
+      _buffer.add(tuple);         // 용량이 찰 때 까지 버퍼에 투플 추가
+    } else {
+      // 버퍼가 꽉 차면 합계를 투플에 실어 방출.
+      // 방출되는 투플에 대해 버퍼 안에 포함된 입력 투플 모두 앵커가 걸려있음
+      _collector.emit(_buffer, new Values(_sum));
+      for (Tuple _tuple: _buffer) {
+        _collector.ack(_tuple);   // 버퍼 내에 있는 모든 투플에 ack 전송
+      }
+      _buffer.clear();  // 버퍼 클리어
+      _sum = 0;         // 합계 초기화
+    }
+  }
+}
+```
 
 ## 15.4 `SWA`의 시간대별 순방문자 수를 구하는 속도계층 구현
 - 핵심: 동일관계를 무시하는 근사 방법 사용
@@ -197,6 +255,7 @@ public static class NormalizeURLBolt extends BaseBasicBolt {
       /* do nothing - 정규화가 실패하는 경우 해당 투플 Skip */
     }
   }
+  
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     declarer.declare(new Field("user", "url", "timestamp"));
   }
