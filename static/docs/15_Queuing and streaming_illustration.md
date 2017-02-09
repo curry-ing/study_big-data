@@ -10,6 +10,7 @@
 > 스톰 모델의 핵심 개념 상기
 `Tuple`, `Stream`, `Spout`, `Bolt`, `Topology`
 
+### 단어 수 세기 예제
 ![](../images/pic_15_1.png)
 
 #### 스파우트
