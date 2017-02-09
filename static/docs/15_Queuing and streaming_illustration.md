@@ -10,10 +10,10 @@
 > 스톰 모델의 핵심 개념 상기
 `Tuple`, `Stream`, `Spout`, `Bolt`, `Topology`
 
-### 단어 수 세기 예제
+#### 단어 수 세기 예제
 ![](../images/pic_15_1.png)
 
-#### 스파우트
+##### 스파우트
 - 100ms마다 임의로 한 개를 선택하여 방출하면서 문장 스트림을 끝없이 생산
 - 직접 스파우트를 만드는 방식으로 구현했지만...
    - 스톰은 카프카 등 여러 외부 큐로부터 데이터를 읽을 수 있는 미리 구현된 여러 스파우트를 자체 제공
@@ -49,7 +49,7 @@ public static class RandomSentenceSpout extends BaseRichSpout {
 ```
 
 
-#### 단어 분리자 볼트
+##### 단어 분리자 볼트
 - 들어오는 투플에서 첫 필드로부터 문장을 꺼내고
 - 문장에 포함된 단어 전부에 대한 투플을 새로 만들어 방출
 
@@ -68,7 +68,7 @@ public static class SplitSentence extends BaseBasicBolt {
 }
 ```
 
-#### 카운터 볼트
+##### 카운터 볼트
 - 인-메모리 해시맵에 단어 개수를 저장하는 방식으로 구현
 - 데이터베이스와 통신하는 방식으로 구현하더라도 무방
 
@@ -105,7 +105,7 @@ public static void main(String[] args) throws Exception {
 
   // 문장 스트림을 받아 단어 스트림으로 바꾸는 볼트를 12개 생성하여 분산
   builder.setBolt("splitter", new SplitSentence(), 12)  
-    .shuffleGrouping("sentence-spout");                 // 딱히 문장을 어떻게 소비할지에 대한 명시적인 요구가 없기에 셔플 그룹화를 사용
+    .shuffleGrouping("sentence-spout");  // 딱히 문장을 어떻게 소비할지에 대한 명시적인 요구가 없기에 셔플 그룹화 사용
 
   // 단어 스트림을 소비하여 단어 개수를 카운트하는 볼트를 12개 생성
   builder.setBolt("count", new WordCount(), 12)       
