@@ -60,6 +60,7 @@ public static class SplitSentence extends BaseBasicBolt {
       collector.emit(new Values(word));   // 문장을 단어로 분리하여 출력 투플 스트림으로 방출
     }
   }
+
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     // 외부로 나가는 투플은 `word`로 이름붙인 한 개의 값으로 구성토록 정의
     declarer.declare(new Fields("word"));
@@ -84,6 +85,7 @@ public static class WordCount extends BaseBasicBolt {
     counts.put(word, count);                  // 갱신된 단어 수를 저장
     collector.emit(new Values(word, count));  // 갱신된 단어 수를 방출
   }
+  ​
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     // 단어와 해당 단어의 현재 개수로 구성된 출력 투플 선언
     declarer.declare(new Fields("word", "count"));  
@@ -92,7 +94,7 @@ public static class WordCount extends BaseBasicBolt {
 ```
 
 #### 토폴로지
-로 완전히 엮어보겠습니다. 
+로 완전히 엮어보겠습니다.
 
 ```java
 public static void main(String[] args) throws Exception {
